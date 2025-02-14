@@ -1,9 +1,5 @@
 # 📝 Notepad Web App
 
-![License](https://img.shields.io/github/license/rajtilak-2020/Notepad-Web-App)
-![Stars](https://img.shields.io/github/stars/rajtilak-2020/Notepad-Web-App?style=social)
-![Forks](https://img.shields.io/github/forks/rajtilak-2020/Notepad-Web-App?style=social)
-
 A **lightweight and efficient Notepad Web App** built with **React (TSX), Vite, TailwindCSS**, and **TypeScript**. It includes essential text-editing features, a status bar, and auto-save functionality.
 
 ## 🚀 Features
