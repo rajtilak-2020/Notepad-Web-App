@@ -8,13 +8,21 @@ import { useAutosave } from './hooks/useAutosave';
 import { EditorState, FindReplaceState } from './types';
 
 function App() {
-  const [editorState, setEditorState] = useState<EditorState>({
-    content: '',
-    wordCount: 0,
-    isSaved: true,
-    fontSize: '16px',
-    fontFamily: 'Arial'
-  });
+  // Load saved content from localStorage when the app starts
+  const loadSavedContent = (): EditorState => {
+    const savedContent = localStorage.getItem('notepad-content');
+    if (savedContent) {
+      try {
+        return { ...JSON.parse(savedContent), isSaved: true };
+      } catch (error) {
+        console.error("Error parsing saved content:", error);
+      }
+    }
+    return { content: '', wordCount: 0, isSaved: true, fontSize: '16px', fontFamily: 'Arial' };
+  };
+
+  // Initialize state from localStorage
+  const [editorState, setEditorState] = useState<EditorState>(loadSavedContent);
 
   const [findReplaceState, setFindReplaceState] = useState<FindReplaceState>({
     findText: '',
@@ -49,78 +57,12 @@ function App() {
     });
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const handleDownload = () => {
+  useEffect(() => {
+    // Restore content when component mounts
     if (editorRef.current) {
-      const element = editorRef.current;
-      const opt = {
-        margin: 1,
-        filename: 'note.pdf',
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
-      };
-
-      html2pdf().set(opt).from(element).save().then(() => {
-        toast.success('PDF downloaded successfully!', {
-          style: {
-            background: '#27272a',
-            color: '#e4e4e7'
-          }
-        });
-      });
+      editorRef.current.innerText = editorState.content;
     }
-  };
-
-  const handleFind = () => {
-    if (!findReplaceState.findText) return;
-    
-    const content = editorRef.current?.innerText || '';
-    const regex = new RegExp(findReplaceState.findText, 'gi');
-    
-    if (!regex.test(content)) {
-      toast.error('No matches found', {
-        style: {
-          background: '#27272a',
-          color: '#e4e4e7'
-        }
-      });
-    }
-  };
-
-  const handleReplace = () => {
-    if (!findReplaceState.findText) return;
-    
-    const selection = window.getSelection();
-    const range = selection?.getRangeAt(0);
-    
-    if (range) {
-      range.deleteContents();
-      range.insertNode(document.createTextNode(findReplaceState.replaceText));
-      handleContentChange();
-    }
-  };
-
-  const handleReplaceAll = () => {
-    if (!findReplaceState.findText) return;
-    
-    if (editorRef.current) {
-      const content = editorRef.current.innerText;
-      const regex = new RegExp(findReplaceState.findText, 'gi');
-      const newContent = content.replace(regex, findReplaceState.replaceText);
-      editorRef.current.innerText = newContent;
-      handleContentChange();
-      toast.success('Replaced all occurrences', {
-        style: {
-          background: '#27272a',
-          color: '#e4e4e7'
-        }
-      });
-    }
-  };
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -129,10 +71,6 @@ function App() {
           case 's':
             e.preventDefault();
             handleSave();
-            break;
-          case 'p':
-            e.preventDefault();
-            handlePrint();
             break;
           case 'f':
             e.preventDefault();
@@ -151,8 +89,28 @@ function App() {
       <Toolbar
         editorState={editorState}
         onSave={handleSave}
-        onPrint={handlePrint}
-        onDownload={handleDownload}
+        onPrint={() => window.print()}
+        onDownload={() => {
+          if (editorRef.current) {
+            const element = editorRef.current;
+            const opt = {
+              margin: 1,
+              filename: 'note.pdf',
+              image: { type: 'jpeg', quality: 0.98 },
+              html2canvas: { scale: 2 },
+              jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(element).save().then(() => {
+              toast.success('PDF downloaded successfully!', {
+                style: {
+                  background: '#27272a',
+                  color: '#e4e4e7'
+                }
+              });
+            });
+          }
+        }}
         onFindReplace={() => setFindReplaceState(prev => ({ ...prev, isVisible: true }))}
         setEditorState={setEditorState}
       />
@@ -173,9 +131,50 @@ function App() {
         <FindReplace
           findReplaceState={findReplaceState}
           setFindReplaceState={setFindReplaceState}
-          onFind={handleFind}
-          onReplace={handleReplace}
-          onReplaceAll={handleReplaceAll}
+          onFind={() => {
+            if (!findReplaceState.findText) return;
+            
+            const content = editorRef.current?.innerText || '';
+            const regex = new RegExp(findReplaceState.findText, 'gi');
+            
+            if (!regex.test(content)) {
+              toast.error('No matches found', {
+                style: {
+                  background: '#27272a',
+                  color: '#e4e4e7'
+                }
+              });
+            }
+          }}
+          onReplace={() => {
+            if (!findReplaceState.findText) return;
+            
+            const selection = window.getSelection();
+            const range = selection?.getRangeAt(0);
+            
+            if (range) {
+              range.deleteContents();
+              range.insertNode(document.createTextNode(findReplaceState.replaceText));
+              handleContentChange();
+            }
+          }}
+          onReplaceAll={() => {
+            if (!findReplaceState.findText) return;
+            
+            if (editorRef.current) {
+              const content = editorRef.current.innerText;
+              const regex = new RegExp(findReplaceState.findText, 'gi');
+              const newContent = content.replace(regex, findReplaceState.replaceText);
+              editorRef.current.innerText = newContent;
+              handleContentChange();
+              toast.success('Replaced all occurrences', {
+                style: {
+                  background: '#27272a',
+                  color: '#e4e4e7'
+                }
+              });
+            }
+          }}
         />
       </div>
 
